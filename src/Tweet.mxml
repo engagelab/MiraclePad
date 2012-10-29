@@ -129,7 +129,7 @@
 				
 				//dispatch XMPP message so that all clients refresh automatically
 				
-				dispatchEvent(new TweetsRefreshEvent(resourceManager.getString('resources', 'REFRESH_TWEETS'), true));
+				dispatchEvent(new TweetsRefreshEvent(resourceManager.getString('resources', 'DISPATCH_REFRESH_TWEETS'), true));
 				enableListeners(true);	
 				CursorManager.removeAllCursors();
 			}

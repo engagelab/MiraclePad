@@ -30,11 +30,18 @@
 			 * 
 			 **/
 			protected function initView(event:FlexEvent):void {
+				this.addEventListener(resourceManager.getString('resources', 'DISPATCH_REFRESH_TWEETS'), dispatchRefreshTweetHandler);
+				
 				_currentGroup = navigator.context;
 				tweetOwner = new String(_currentGroup.title).toLowerCase();
 				_conn = XMPP(data);
 				_conn.addEventListener(XMPPEvent.MESSAGE_MUC, handleMUCMessage);
 				_conn.plugin['muc'].joinRoom('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_ROOM_NAME'), new String(_currentGroup.title).toLowerCase()+"-"+UIDUtil.createUID());
+				_conn.plugin['muc'].joinRoom('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), new String(_currentGroup.title).toLowerCase()+"-"+UIDUtil.createUID());
+			}
+			
+			protected function dispatchRefreshTweetHandler(evt:Event):void {
+				_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"userName":"'+new String(_currentGroup.title).toLowerCase()+'", "messageType":"'+resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')+'"}', null);
 			}
 			
 			/**
@@ -47,19 +54,30 @@
 					return;
 				}
 				
-				var roomjid:JID = JID(evt.stanza.from);
-				var al:Number = 1;
-				
-				var xm:XML = evt.stanza.xml as XML;
-				for each (var i:XML in xm.elements()) {
-					if(i.name() == "urn:xmpp:delay::delay") {
-						al = .5;
-					}
+				switch(new String(evt.stanza.from.user)) {
+					case resourceManager.getString('resources', 'TWEETS_ROOM_NAME'):
+						var roomjid:JID = JID(evt.stanza.from);
+						var al:Number = 1;
+						
+						var xm:XML = evt.stanza.xml as XML;
+						for each (var i:XML in xm.elements()) {
+							if(i.name() == "urn:xmpp:delay::delay") {
+								al = .5;
+							}
+						}
+						
+						tweetFeedArray.addItem({bdy: evt.stanza.body, from: cleanResource(roomjid.getResource()), al: al, visible: true, tags: getTagsForContent(evt.stanza.body)});
+						refreshFeed();
+						break;
 					
+					case resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'):
+						var res:Object = com.adobe.serialization.json.JSON.decode(String(evt.stanza.body));
+						if(res.userName == new String(_currentGroup.title).toLowerCase() && res.messageType == resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')) {
+							loadTweets();
+						}
+						
+						break;
 				}
-				
-				tweetFeedArray.addItem({bdy: evt.stanza.body, from: cleanResource(roomjid.getResource()), al: al, visible: true, tags: getTagsForContent(evt.stanza.body)});
-				refreshFeed();
 						
 			}
 			
@@ -196,8 +214,7 @@
 			protected function getTweets_resultHandler(event:ResultEvent):void {
 				if(event.result != "") {
 					var tweetsForGroup:Array = com.adobe.serialization.json.JSON.decode(String(event.result));
-					
-					tweetsContainer.removeAllElements();
+					var tempArray:Array = new Array();
 					
 					//build the correct arrays
 					var tweet:Tweet;
@@ -209,13 +226,21 @@
 						//need to see if tweet is visisble
 						if(twt.isVisible) {
 							//place the tweets in the view
-							tweetsContainer.addElement(tweet);
+							//tweetsContainer.addElement(tweet);
+							tempArray.push(tweet);
+						}
+					}
+					
+					if(this.currentState == "portfolio") {
+						tweetsContainer.removeAllElements();
+						for each (var visibleTweet:Tweet in tempArray) {
+							tweetsContainer.addElement(visibleTweet);	
 						}
 					}
 				}			
 			}
 			
-			protected function loadTweets(event:FlexEvent):void {
+			protected function loadTweets():void {
 				getTweets.url = resourceManager.getString('resources', 'TWEET_SERVER_URL') + "/tweet/" + new String(_currentGroup.title).toLowerCase();
 				getTweets.send();
 			}
@@ -231,21 +256,28 @@
 	
 	<s:states>
 		<s:State name="feed" />
-		<s:State name="portfolio" enterState="loadTweets(event)" />
+		<s:State name="portfolio" enterState="loadTweets()" />
 	</s:states>
 	
 	<s:navigationContent>
-		<s:Button label="Logout" />
+		<s:Button includeIn="feed" label="Portfolio" click="this.currentState='portfolio'" />
+		<s:Button includeIn="portfolio" label="LiveFeed" click="this.currentState='feed'"/>
 	</s:navigationContent>
 	
+	<s:titleContent>
+		<s:Label color="#FFFFFF" text="{this.title}" textAlign="center" width="100%" fontWeight="bold" />
+	</s:titleContent>
+	
 	<s:actionContent>
-		<s:Button includeIn="feed" label="Portfolio" click="this.currentState='portfolio'"/>
-		<s:Button includeIn="portfolio" label="LiveFeed" click="this.currentState='feed'"/>
+		<s:Button label="Logout" />
 	</s:actionContent>
 	
 	<s:HGroup width="100%" height="100%" includeIn="feed">
-		<s:BorderContainer width="250" height="100%" backgroundColor="#666666">
-			<s:VGroup id="filterGroup" width="100%" gap="15" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" creationComplete="buildFilters(event)"/>
+		<s:BorderContainer width="250" height="100%" backgroundColor="#333333" skinClass="skins.hashPanelHeaderSkin">
+			<s:VGroup width="100%" height="100%">
+				<s:Label width="100%" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" text="Filters:" color="#FFFFFF" textDecoration="underline" />
+				<s:VGroup id="filterGroup" width="100%" gap="15" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" creationComplete="buildFilters(event)"/>
+			</s:VGroup>
 		</s:BorderContainer>
 		<s:VGroup width="100%" height="100%">
 			<s:List id="liveFeedList" width="100%" height="100%" selectionColor="#FFFFFF" horizontalScrollPolicy="off" borderVisible="false" itemRenderer="itemRenderers.TweetItem" >

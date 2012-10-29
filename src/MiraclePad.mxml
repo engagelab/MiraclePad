@@ -6,6 +6,23 @@
 		[ResourceBundle("resources")]
 	</fx:Metadata>
 	
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		@media(os-platform:"IOS")
+		{
+			s|ActionBar
+			{
+				defaultButtonAppearance:beveled;
+			}
+			
+			s|ActionBar.beveled s|Group#navigationGroup s|Button
+			{
+				/* use the rounded button instead of the arrow button */
+				skinClass: ClassReference("spark.skins.mobile.BeveledActionButtonSkin");
+			}
+		}
+	</fx:Style>
+	
 	<fx:Script>
 		<![CDATA[
 			import com.seesmic.as3.xmpp.StreamEvent;
@@ -18,7 +35,7 @@
 			import mx.events.FlexEvent;
 			import mx.utils.UIDUtil;
 			
-			import views.LiveFeedView;
+			import views.TweetView;
 			
 			public static const HASH_TAGS_ARRAY:Array = new Array("#wind", "#solar", "#nuclear", "#hydro-electric", "#geothermal", "#fossil");
 			
@@ -87,7 +104,7 @@
 			 **/
 			protected final function handleSession(e:XMPPEvent):void {
 				_conn.sendPresence();
-				navigator.pushView(LiveFeedView, _conn, _currentGroup, null);
+				navigator.pushView(TweetView, _conn, _currentGroup, null);
 			}
 			
 			/**
