@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" title="MiraclePad Login" creationComplete="{getAllGroups.send()}" xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import listeners.LoginAcceptedEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.events.ValidationResultEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			[Bindable] private var _groupList:ArrayCollection;
+			
+			/**
+			 *
+			 * Result handling method for getAllGroups service 
+			 * 
+			 **/
+			protected function getAllGroups_resultHandler(event:ResultEvent):void {
+				//store the returned object as JSON 
+				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
+				
+				//instantiate and build group array
+				_groupList = new ArrayCollection();
+				for each (var act:Object in res) {
+					_groupList.addItem({title: act.name, id: act.id, colour: act.colour});
+				}
+			}
+			
+			/**
+			 *
+			 * Error handling method for getAllGroups service 
+			 * 
+			 **/
+			protected function getAllGroups_faultHandler(event:FaultEvent):void {
+				trace("An error occured while retrieving group names from the server.");
+			}
+			
+			/**
+			 *
+			 * Handles click on LOG IN button 
+			 * 
+			 **/
+			protected function validateBeforeLoggingIn():void {
+				//validate the combo
+				var passValidation:ValidationResultEvent = passwordValidator.validate();
+				
+				if (passValidation.type == ValidationResultEvent.VALID) {
+					submitForm();
+				}
+			}
+			
+			/**
+			 *
+			 * Called if the passwordValidator is valid
+			 * 
+			 **/
+			protected function submitForm():void {
+				var params:Object = new Object();
+				params.groupId = (groupCombo.selectedItem as Object).id;
+				params.password = groupPass.text;
+				
+				var urlRequest:URLRequest = new URLRequest(resourceManager.getString('resources', 'SERVER_URL')+'/connect');
+				urlRequest.method = URLRequestMethod.POST;
+				urlRequest.contentType = "application/json";
+				urlRequest.data = com.adobe.serialization.json.JSON.encode(params);
+				var loginService:URLLoader = new URLLoader();
+				loginService.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
+				loginService.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				loginService.load(urlRequest);
+			}
+			
+			/**
+			 *
+			 * Handles response from the loginService 
+			 * 
+			 **/
+			protected function httpStatusHandler(ev:HTTPStatusEvent):void {
+				
+				//analyse returned status code
+				switch(ev.status) {
+					case 0:
+						//service not available
+						trace("The login service is not available. Please contact your administrator.");
+						break;
+					case 200:
+						//login OK, password accepted
+						var lae:LoginAcceptedEvent = new LoginAcceptedEvent(resourceManager.getString('resources', 'LOGIN_ACCEPTED'), true);
+						lae.selectedGroup = groupCombo.selectedItem as Object;
+						dispatchEvent(lae);
+						break;
+					case 401:
+						//login not OK, wrong password
+						trace("The password is not valid.");
+						groupPass.text = "";
+						break;
+				}
+			}
+			
+			/**
+			 *
+			 * Handles ioError from the loginService 
+			 * 
+			 **/
+			private function ioErrorHandler(ev:IOErrorEvent):void {
+				trace(ev.errorID);
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:HTTPService url="{resourceManager.getString('resources', 'SERVER_URL')+'/groupInfo'}" 
+					   method="GET" result="getAllGroups_resultHandler(event)" fault="getAllGroups_faultHandler(event)" 
+					   resultFormat="text" id="getAllGroups" />
+		<!-- validators for login -->
+		<mx:StringValidator id="passwordValidator" source="{groupPass}" property="text" minLength="1" tooShortError="Provide a password" />
+	</fx:Declarations>
+	
+	<s:VGroup horizontalAlign="center" horizontalCenter="0" verticalCenter="0">
+		<s:HGroup verticalAlign="middle" width="100%" gap="15">
+			<s:Label text="Group:" width="90" textAlign="right"/>
+			<s:SpinnerListContainer>
+				<s:SpinnerList id="groupCombo" dataProvider="{_groupList}" width="300" itemRenderer="itemRenderers.SpinnerLoginRenderer" />
+			</s:SpinnerListContainer>
+		</s:HGroup>
+		<s:HGroup verticalAlign="middle" width="100%" gap="15">
+			<s:Label text="Password:" width="90" textAlign="right"/>
+			<s:TextInput id="groupPass" text="lilla" displayAsPassword="true" width="100%"/>
+		</s:HGroup>
+		<s:Spacer height="20" />
+		<s:Button label="LOG IN" click="validateBeforeLoggingIn()" />
+	</s:VGroup>
+</s:View>

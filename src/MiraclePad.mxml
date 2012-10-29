@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ViewNavigatorApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+							xmlns:s="library://ns.adobe.com/flex/spark" firstView="views.MiraclePadHomeView" resizeForSoftKeyboard="true" applicationComplete="viewnavigatorapplication1_applicationCompleteHandler(event)">
+	
+	<fx:Metadata>
+		[ResourceBundle("resources")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.seesmic.as3.xmpp.StreamEvent;
+			import com.seesmic.as3.xmpp.XMPP;
+			import com.seesmic.as3.xmpp.XMPPEvent;
+			import com.seesmic.as3.xmpp.xep.muc.MUC;
+			
+			import listeners.LoginAcceptedEvent;
+			
+			import mx.events.FlexEvent;
+			import mx.utils.UIDUtil;
+			
+			import views.LiveFeedView;
+			
+			public static const HASH_TAGS_ARRAY:Array = new Array("#wind", "#solar", "#nuclear", "#hydro-electric", "#geothermal", "#fossil");
+			
+			public static const SVART:uint = 0x000000;
+			public static const ORANGSJE:uint = 0xFF9736;
+			public static const ROSA:uint = 0xFF3288;
+			public static const LILLA:uint = 0x811D78;
+			public static const GRØNN:uint = 0x89BD46;
+			public static const BLÅ:uint = 0x4ACAF1;
+			public static const BRUN:uint = 0x6E3F30;
+			
+			private var _conn:XMPP = null;
+			private var _currentGroup:Object;
+			
+			/**
+			 *
+			 * Called when application creation is complete
+			 * 
+			 **/
+			protected function viewnavigatorapplication1_applicationCompleteHandler(event:FlexEvent):void {
+				this.addEventListener(resourceManager.getString('resources', 'LOGIN_ACCEPTED'), handleLoginAccepted);
+			}
+			
+			/**
+			 *
+			 * Event handling method when login is OK
+			 * 
+			 **/
+			protected function handleLoginAccepted(evt:LoginAcceptedEvent):void {
+				//this needs to be assigned before we change the application's state
+				_currentGroup = evt.selectedGroup;
+				prepareXMPPConnection(new String(_currentGroup.title).toLowerCase());
+			}
+			
+			/**
+			 *
+			 * Function to instantiate a XMPP connection
+			 * 
+			 **/
+			protected function prepareXMPPConnection(grpName:String):void {
+				_conn = new XMPP();
+				_conn.auto_reconnect = true;
+				_conn.setJID(grpName+"@"+resourceManager.getString('resources', 'XMPP_SERVER')+"/"+UIDUtil.createUID());
+				_conn.setPassword(resourceManager.getString('resources', 'XMPP_CLIENT_DEFAULT_PASSWORD'));
+				_conn.setServer(resourceManager.getString('resources', 'XMPP_SERVER'));
+				_conn.addEventListener(XMPPEvent.SESSION, handleSession);
+				_conn.socket.addEventListener(StreamEvent.CONNECT_FAILED, handleConnectFailed);
+				_conn.addPlugin(new MUC());
+				_conn.connect();
+			}
+			
+			/**
+			 *
+			 * Event handling method for StreamEvent.CONNECT_FAILED
+			 * 
+			 **/
+			protected function handleConnectFailed(e:StreamEvent):void {
+				trace("The connection with the messaging server failed. The application will not load.");
+				_conn.cancelReconnectionTimer();
+			}
+			
+			/**
+			 *
+			 * Event handling method for XMPP session
+			 * 
+			 **/
+			protected final function handleSession(e:XMPPEvent):void {
+				_conn.sendPresence();
+				navigator.pushView(LiveFeedView, _conn, _currentGroup, null);
+			}
+			
+			/**
+			 *
+			 * Static function to return color codes
+			 * 
+			 **/
+			public static function getColorBasedOnGroup(groupName:String):uint {
+				switch(groupName) {
+					case "lilla": {
+						return LILLA;
+						break;
+					}
+						
+					case "rosa": {
+						return ROSA;
+						break;
+					}
+						
+					default: {
+						return 0;
+						break;
+					}
+				}
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	
+</s:ViewNavigatorApplication>
