@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
 		 xmlns:s="library://ns.adobe.com/flex/spark" 
-		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="creationCompleteHandler(event)" width="150" minHeight="30" cornerRadius="5">
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="creationCompleteHandler(event)" minHeight="30" cornerRadius="5">
 	
 	<fx:Declarations>
 		<fx:Object id="data" />
@@ -38,8 +38,15 @@
 			 * 
 			 **/
 			protected function creationCompleteHandler(event:FlexEvent):void {
-				this.x = data.xpos;
-				this.y = data.ypos;
+				//this.x = data.xpos;
+				//this.y = data.ypos;
+				
+				this.width = this.parent.width*.2;
+				
+				this.x = (data.xpos*this.parent.width) / 100;
+				this.y = (data.ypos*(this.parent.height+45)) / 100;
+				
+				
 				this.backgroundFill = new SolidColor(MiraclePad.getColorBasedOnGroup(data.userName));
 				
 				//make this thingy draggable
@@ -69,10 +76,18 @@
 			 **/
 			protected function enableListeners(b:Boolean):void {
 				if(b) {
-					this.addEventListener(MouseEvent.MOUSE_OVER, mouseOverHandler, false, 0, false);
-					this.addEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler, false, 0, false);
-					this.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler, false, 0, false);
-					this.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler, false, 0, false);
+					if(Multitouch.supportsTouchEvents) {
+						/*this.addEventListener(TouchEvent.TOUCH_BEGIN, onTouchBegin);
+						this.addEventListener(TouchEvent.TOUCH_END, onTouchEnd);
+						this.addEventListener(TouchEvent.TOUCH_MOVE, onTouchMove);
+						this.addEventListener(GestureEvent.GESTURE_TWO_FINGER_TAP, onDoubleTap);*/
+					}
+					else {
+						this.addEventListener(MouseEvent.MOUSE_OVER, mouseOverHandler, false, 0, false);
+						this.addEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler, false, 0, false);
+						this.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler, false, 0, false);
+						this.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler, false, 0, false);
+					}
 				}
 				else {
 					this.removeEventListener(MouseEvent.MOUSE_OVER, mouseOverHandler);
@@ -104,9 +119,12 @@
 			protected function mouseUpHandler(event:MouseEvent):void {
 				//stop dragging
 				this.stopDrag();
+				
 				//update the new position with the server
-				data.xpos = this.x;
-				data.ypos = this.y;
+				//data.xpos = this.x;
+				//data.ypos = this.y;
+				data.xpos = Math.floor((this.x * 100) / this.parent.width);
+				data.ypos = Math.floor((this.y * 100) / (this.parent.height+45));
 				
 				updateTweet();
 			}
