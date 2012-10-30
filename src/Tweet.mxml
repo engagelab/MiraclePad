@@ -1,10 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
 		 xmlns:s="library://ns.adobe.com/flex/spark" 
-		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="creationCompleteHandler(event)" minHeight="30" cornerRadius="5">
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="creationCompleteHandler(event)" minHeight="30" cornerRadius="5" mouseChildren="false">
 	
 	<fx:Declarations>
 		<fx:Object id="data" />
+		
+		<fx:Component className="MyCallout">
+			<s:Callout horizontalPosition="end" verticalPosition="after">
+				<s:VGroup paddingTop="10" paddingLeft="10" paddingRight="10" paddingBottom="10" horizontalAlign="center">
+					<s:Label width="100%" text="Are you sure to delete this tweet?" textAlign="center" />
+					<s:HGroup>
+						<s:Button label="YES" click="close(true, true);"/>
+						<s:Button label="NO" click="close(true, false);"/>
+					</s:HGroup>
+				</s:VGroup>
+			</s:Callout>        
+		</fx:Component>
 	</fx:Declarations>
 	
 	<fx:Script>
@@ -16,6 +28,9 @@
 			
 			import mx.events.FlexEvent;
 			import mx.managers.CursorManager;
+			
+			import spark.components.Group;
+			import spark.events.PopUpEvent;
 			
 			private var oldX:Number;
 			private var oldY:Number;
@@ -29,6 +44,7 @@
 			private var cursorId:int;
 			
 			private var refreshTimer:Number;
+			private var longTapTimer:Number;
 			
 			[Bindable] private var ownerColor:uint;
 			
@@ -38,6 +54,8 @@
 			 * 
 			 **/
 			protected function creationCompleteHandler(event:FlexEvent):void {
+				Multitouch.inputMode = MultitouchInputMode.TOUCH_POINT;
+				
 				//this.x = data.xpos;
 				//this.y = data.ypos;
 				
@@ -77,32 +95,104 @@
 			protected function enableListeners(b:Boolean):void {
 				if(b) {
 					if(Multitouch.supportsTouchEvents) {
-						/*this.addEventListener(TouchEvent.TOUCH_BEGIN, onTouchBegin);
+						this.addEventListener(TouchEvent.TOUCH_BEGIN, onTouchBegin);
 						this.addEventListener(TouchEvent.TOUCH_END, onTouchEnd);
 						this.addEventListener(TouchEvent.TOUCH_MOVE, onTouchMove);
-						this.addEventListener(GestureEvent.GESTURE_TWO_FINGER_TAP, onDoubleTap);*/
+						this.addEventListener(GestureEvent.GESTURE_TWO_FINGER_TAP, onDoubleTap);
 					}
 					else {
 						this.addEventListener(MouseEvent.MOUSE_OVER, mouseOverHandler, false, 0, false);
 						this.addEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler, false, 0, false);
 						this.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler, false, 0, false);
 						this.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler, false, 0, false);
+						this.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
 					}
 				}
 				else {
-					this.removeEventListener(MouseEvent.MOUSE_OVER, mouseOverHandler);
-					this.removeEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler);
-					this.removeEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler);
-					this.removeEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
+					if(Multitouch.supportsTouchEvents) {
+						this.removeEventListener(TouchEvent.TOUCH_BEGIN, onTouchBegin);
+						this.removeEventListener(TouchEvent.TOUCH_END, onTouchEnd);
+						this.removeEventListener(TouchEvent.TOUCH_MOVE, onTouchMove);
+						this.removeEventListener(GestureEvent.GESTURE_TWO_FINGER_TAP, onDoubleTap);
+					}
+					else {
+						this.removeEventListener(MouseEvent.MOUSE_OVER, mouseOverHandler);
+						this.removeEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler);
+						this.removeEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler);
+						this.removeEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
+						this.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+					}
 				}
 			}
 			
+			protected function onDoubleTap(evt:GestureEvent):void {
+				handleLongTap();
+			}
+			
+			protected function onTouchMove(evt:TouchEvent):void {
+				evt.target.alpha = 0.5;
+			}
+			
+			protected function onTouchBegin(evt:TouchEvent):void {
+				//we log the old X and Y, in case the service cannot accept the move
+				oldX = this.x;
+				oldY = this.y;
+				
+				var homeDragBounds:Rectangle = new Rectangle(0, 0, this.parent.width-this.width, this.parent.height-this.height);
+				
+				this.startTouchDrag(evt.touchPointID, false, homeDragBounds);
+				(this.parent as Group).setElementIndex(this, (this.parent as Group).numElements-1);
+
+				//longTapTimer = setInterval(handleLongTap, 2000);
+			}
+			
+			protected function handleLongTap():void {
+				clearInterval(longTapTimer);
+				this.stopDrag();
+				//this.stopTouchDrag(currentPointID);
+				trace("long tap!!");
+				var myCallout:MyCallout = new MyCallout();
+				myCallout.addEventListener(PopUpEvent.CLOSE, handleCalloutClose);
+				myCallout.open(this, true);
+			}
+			
+			protected function handleCalloutClose(evt:PopUpEvent):void {
+				var answerFromCallOut:Boolean = evt.data as Boolean;
+				
+				if(answerFromCallOut) {
+					data.isVisible = false;
+					updateTweet();
+				}
+			}
+			
+			protected function onTouchEnd(evt:TouchEvent):void {
+				this.stopTouchDrag(evt.touchPointID);
+				//clearInterval(longTapTimer);
+				evt.target.alpha = 1;
+				
+				if(oldX != this.x || oldY != this.y) {
+					data.xpos = Math.floor((this.x * 100) / this.parent.width);
+					data.ypos = Math.floor((this.y * 100) / (this.parent.height+45));
+					
+					updateTweet();
+				}
+			}
+			
+			
+			protected function mouseMoveHandler(event:MouseEvent):void {
+				clearInterval(longTapTimer);
+			}
 			/**
 			 *
 			 * Called when mouse is pressed on this item
 			 * 
 			 **/
 			protected function mouseDownHandler(event:MouseEvent):void {
+				//bump to top
+				(this.parent as Group).setElementIndex(this, (this.parent as Group).numElements-1);
+				
+				longTapTimer = setInterval(handleLongTap, 2000);
+				
 				//we log the old X and Y, in case the service cannot accept the move
 				oldX = this.x;
 				oldY = this.y;
@@ -120,13 +210,15 @@
 				//stop dragging
 				this.stopDrag();
 				
-				//update the new position with the server
-				//data.xpos = this.x;
-				//data.ypos = this.y;
-				data.xpos = Math.floor((this.x * 100) / this.parent.width);
-				data.ypos = Math.floor((this.y * 100) / (this.parent.height+45));
+				clearInterval(longTapTimer);
 				
-				updateTweet();
+				//update the new position with the server
+				if(oldX != this.x || oldY != this.y) {
+					data.xpos = Math.floor((this.x * 100) / this.parent.width);
+					data.ypos = Math.floor((this.y * 100) / (this.parent.height+45));
+					
+					updateTweet();
+				}
 			}
 			
 			protected function updateTweet():void {

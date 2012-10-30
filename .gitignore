@@ -4,3 +4,5 @@
 MiraclePad.ipa
 
 src/locale/en_US/resources.properties
+
+bin-debug/MiraclePad.swf
