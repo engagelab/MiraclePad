@@ -8,8 +8,6 @@
 			import listeners.LoginAcceptedEvent;
 			
 			import mx.collections.ArrayCollection;
-			import mx.events.FlexEvent;
-			import mx.events.ValidationResultEvent;
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
 			
@@ -47,10 +45,12 @@
 			 **/
 			protected function validateBeforeLoggingIn():void {
 				//validate the combo
-				var passValidation:ValidationResultEvent = passwordValidator.validate();
-				
-				if (passValidation.type == ValidationResultEvent.VALID) {
-					submitForm();
+				if(groupPass.text.length > 0) {
+					submitForm();					
+				}
+				else {
+					var tooShortPassCallout:TooShortPassCallout = new TooShortPassCallout();
+					tooShortPassCallout.open(groupPass, true);
 				}
 			}
 			
@@ -96,7 +96,8 @@
 					case 401:
 						//login not OK, wrong password
 						trace("The password is not valid.");
-						
+						var wrongPassCallout:WrongPassCallout = new WrongPassCallout();
+						wrongPassCallout.open(groupPass, true);
 						groupPass.text = "";
 						break;
 				}
@@ -117,8 +118,24 @@
 		<s:HTTPService url="{resourceManager.getString('resources', 'SERVER_URL')+'/groupInfo'}" 
 					   method="GET" result="getAllGroups_resultHandler(event)" fault="getAllGroups_faultHandler(event)" 
 					   resultFormat="text" id="getAllGroups" />
-		<!-- validators for login -->
-		<mx:StringValidator id="passwordValidator" source="{groupPass}" property="text" minLength="1" tooShortError="Provide a password" />
+		
+		<fx:Component className="WrongPassCallout">
+			<s:Callout horizontalPosition="after" verticalPosition="middle">
+				<s:VGroup paddingTop="10" paddingLeft="10" paddingRight="10" paddingBottom="10" horizontalAlign="center">
+					<s:Label width="100%" text="The password is not valid." textAlign="center" />
+					<s:Button label="Close" click="close()"/>
+				</s:VGroup>
+			</s:Callout>    
+		</fx:Component>
+		
+		<fx:Component className="TooShortPassCallout">
+			<s:Callout horizontalPosition="after" verticalPosition="middle">
+				<s:VGroup paddingTop="10" paddingLeft="10" paddingRight="10" paddingBottom="10" horizontalAlign="center">
+					<s:Label width="100%" text="Please provide a password." textAlign="center" />
+					<s:Button label="Close" click="close()"/>
+				</s:VGroup>
+			</s:Callout>    
+		</fx:Component>
 	</fx:Declarations>
 	
 	<s:VGroup horizontalAlign="center" horizontalCenter="0" verticalCenter="0">

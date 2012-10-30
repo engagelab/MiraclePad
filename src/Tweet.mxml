@@ -6,7 +6,7 @@
 	<fx:Declarations>
 		<fx:Object id="data" />
 		
-		<fx:Component className="MyCallout">
+		<fx:Component className="HideCallout">
 			<s:Callout horizontalPosition="end" verticalPosition="after">
 				<s:VGroup paddingTop="10" paddingLeft="10" paddingRight="10" paddingBottom="10" horizontalAlign="center">
 					<s:Label width="100%" text="Are you sure to delete this tweet?" textAlign="center" />
@@ -175,9 +175,9 @@
 				this.stopDrag();
 				
 				//create and show the callout
-				var myCallout:MyCallout = new MyCallout();
-				myCallout.addEventListener(PopUpEvent.CLOSE, handleCalloutClose);
-				myCallout.open(this, true);
+				var hideCallout:HideCallout = new HideCallout();
+				hideCallout.addEventListener(PopUpEvent.CLOSE, handleCalloutClose);
+				hideCallout.open(this, true);
 			}
 			
 			/**
