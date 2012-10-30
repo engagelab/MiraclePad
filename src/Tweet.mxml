@@ -27,7 +27,6 @@
 			import listeners.TweetsRefreshEvent;
 			
 			import mx.events.FlexEvent;
-			import mx.managers.CursorManager;
 			
 			import spark.components.Group;
 			import spark.events.PopUpEvent;
@@ -36,12 +35,6 @@
 			private var oldY:Number;
 			
 			private var _conn:XMPP;
-			
-			[Bindable]
-			[Embed(source="assets/drag.png")]
-			private var DragIcon:Class;
-			
-			private var cursorId:int;
 			
 			private var refreshTimer:Number;
 			private var longTapTimer:Number;
@@ -54,20 +47,18 @@
 			 * 
 			 **/
 			protected function creationCompleteHandler(event:FlexEvent):void {
+				//enables touches on the ipad
 				Multitouch.inputMode = MultitouchInputMode.TOUCH_POINT;
 				
-				//this.x = data.xpos;
-				//this.y = data.ypos;
-				
+				//set width, x and y dynamically
 				this.width = this.parent.width*.2;
-				
 				this.x = (data.xpos*this.parent.width) / 100;
 				this.y = (data.ypos*(this.parent.height+45)) / 100;
 				
-				
+				//set the correct color based on groupname
 				this.backgroundFill = new SolidColor(MiraclePad.getColorBasedOnGroup(data.userName));
 				
-				//make this thingy draggable
+				//make this thingy draggable and double-tappable
 				enableListeners(true);
 				
 				//check if current group is the owner
@@ -79,33 +70,21 @@
 			
 			/**
 			 *
-			 * Called when addToPortfolioMI item is clicked
-			 * 
-			 **/
-			protected function addToPortfolioMIHandler(event:ContextMenuEvent):void {
-				data.isPortfolio = !data.isPortfolio;
-				updateTweet();
-			}
-			
-			/**
-			 *
 			 * Function to enable/disable listeners
 			 * 
 			 **/
 			protected function enableListeners(b:Boolean):void {
+				//quick switch to add/remove listeners
 				if(b) {
 					if(Multitouch.supportsTouchEvents) {
 						this.addEventListener(TouchEvent.TOUCH_BEGIN, onTouchBegin);
 						this.addEventListener(TouchEvent.TOUCH_END, onTouchEnd);
 						this.addEventListener(TouchEvent.TOUCH_MOVE, onTouchMove);
-						this.addEventListener(GestureEvent.GESTURE_TWO_FINGER_TAP, onDoubleTap);
+						/*this.addEventListener(GestureEvent.GESTURE_TWO_FINGER_TAP, onDoubleTap);*/
 					}
 					else {
-						this.addEventListener(MouseEvent.MOUSE_OVER, mouseOverHandler, false, 0, false);
-						this.addEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler, false, 0, false);
 						this.addEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler, false, 0, false);
 						this.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler, false, 0, false);
-						this.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
 					}
 				}
 				else {
@@ -113,63 +92,51 @@
 						this.removeEventListener(TouchEvent.TOUCH_BEGIN, onTouchBegin);
 						this.removeEventListener(TouchEvent.TOUCH_END, onTouchEnd);
 						this.removeEventListener(TouchEvent.TOUCH_MOVE, onTouchMove);
-						this.removeEventListener(GestureEvent.GESTURE_TWO_FINGER_TAP, onDoubleTap);
+						/*this.removeEventListener(GestureEvent.GESTURE_TWO_FINGER_TAP, onDoubleTap);*/
 					}
 					else {
-						this.removeEventListener(MouseEvent.MOUSE_OVER, mouseOverHandler);
-						this.removeEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler);
 						this.removeEventListener(MouseEvent.MOUSE_DOWN, mouseDownHandler);
 						this.removeEventListener(MouseEvent.MOUSE_UP, mouseUpHandler);
-						this.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
 					}
 				}
 			}
 			
-			protected function onDoubleTap(evt:GestureEvent):void {
-				handleLongTap();
-			}
-			
-			protected function onTouchMove(evt:TouchEvent):void {
-				evt.target.alpha = 0.5;
-			}
-			
+			/**
+			 *
+			 * Called when a finger touches this component
+			 * 
+			 **/
 			protected function onTouchBegin(evt:TouchEvent):void {
 				//we log the old X and Y, in case the service cannot accept the move
 				oldX = this.x;
 				oldY = this.y;
 				
-				var homeDragBounds:Rectangle = new Rectangle(0, 0, this.parent.width-this.width, this.parent.height-this.height);
+				//start dragging
+				this.startTouchDrag(evt.touchPointID, false, getAreaBoundaries());
 				
-				this.startTouchDrag(evt.touchPointID, false, homeDragBounds);
+				//bump component to the top (Z)
 				(this.parent as Group).setElementIndex(this, (this.parent as Group).numElements-1);
-
-				//longTapTimer = setInterval(handleLongTap, 2000);
-			}
-			
-			protected function handleLongTap():void {
-				clearInterval(longTapTimer);
-				this.stopDrag();
-				//this.stopTouchDrag(currentPointID);
-				trace("long tap!!");
-				var myCallout:MyCallout = new MyCallout();
-				myCallout.addEventListener(PopUpEvent.CLOSE, handleCalloutClose);
-				myCallout.open(this, true);
-			}
-			
-			protected function handleCalloutClose(evt:PopUpEvent):void {
-				var answerFromCallOut:Boolean = evt.data as Boolean;
 				
-				if(answerFromCallOut) {
-					data.isVisible = false;
-					updateTweet();
+				//if another finger is detected, show the callout
+				if(!evt.isPrimaryTouchPoint) {
+					this.stopTouchDrag(evt.touchPointID);
+					showCallOut();
 				}
 			}
 			
+			/**
+			 *
+			 * Called when a finger leaves this component
+			 * 
+			 **/
 			protected function onTouchEnd(evt:TouchEvent):void {
+				//stop dragging
 				this.stopTouchDrag(evt.touchPointID);
-				//clearInterval(longTapTimer);
+				
+				//set the background color back to full
 				evt.target.alpha = 1;
 				
+				//only if the current position has changed, update the tweet
 				if(oldX != this.x || oldY != this.y) {
 					data.xpos = Math.floor((this.x * 100) / this.parent.width);
 					data.ypos = Math.floor((this.y * 100) / (this.parent.height+45));
@@ -178,10 +145,56 @@
 				}
 			}
 			
-			
-			protected function mouseMoveHandler(event:MouseEvent):void {
-				clearInterval(longTapTimer);
+			/**
+			 *
+			 * Called when this component moves
+			 * 
+			 **/
+			protected function onTouchMove(evt:TouchEvent):void {
+				//dimm the background a tad
+				evt.target.alpha = 0.5;
 			}
+			
+			/**
+			 *
+			 * Function to return this tweets' container dimensions
+			 * 
+			 **/
+			protected function getAreaBoundaries():Rectangle {
+				return new Rectangle(0, 0, this.parent.width-this.width, this.parent.height-this.height);
+			}
+			
+			/**
+			 *
+			 * Function to pop the callout
+			 * 
+			 **/
+			protected function showCallOut():void {
+				//only happens in screen debugging
+				clearInterval(longTapTimer);
+				this.stopDrag();
+				
+				//create and show the callout
+				var myCallout:MyCallout = new MyCallout();
+				myCallout.addEventListener(PopUpEvent.CLOSE, handleCalloutClose);
+				myCallout.open(this, true);
+			}
+			
+			/**
+			 *
+			 * Function called when the callout closes
+			 * 
+			 **/
+			protected function handleCalloutClose(evt:PopUpEvent):void {
+				var answerFromCallOut:Boolean = evt.data as Boolean;
+				
+				//if the answer is yes, hide this tweet
+				if(answerFromCallOut) {
+					data.isVisible = false;
+					updateTweet();
+				}
+			}
+			
 			/**
 			 *
 			 * Called when mouse is pressed on this item
@@ -191,14 +204,14 @@
 				//bump to top
 				(this.parent as Group).setElementIndex(this, (this.parent as Group).numElements-1);
 				
-				longTapTimer = setInterval(handleLongTap, 2000);
+				longTapTimer = setInterval(showCallOut, 2000);
 				
 				//we log the old X and Y, in case the service cannot accept the move
 				oldX = this.x;
 				oldY = this.y;
 				
 				//start dragging
-				this.startDrag(false, new Rectangle(0, 0, this.parent.width-this.width, this.parent.height-this.height));
+				this.startDrag(false, getAreaBoundaries());
 			}
 			
 			/**
@@ -221,8 +234,16 @@
 				}
 			}
 			
+			/**
+			 *
+			 * Function to call and update this tweet
+			 * 
+			 **/
 			protected function updateTweet():void {
+				//disable all listeners (this thing can't be dragged anymore)
 				enableListeners(false);
+				
+				//update and listen for success
 				var tu:TweetUpdater = new TweetUpdater();
 				tu.addEventListener(TweetUpdaterEvent.UPDATE_SUCCESSFUL, handleUpdateSuccessful);
 				tu.addEventListener(TweetUpdaterEvent.UPDATE_FAILED, handleUpdateFailure);
@@ -235,13 +256,9 @@
 			 * 
 			 **/
 			protected function handleUpdateSuccessful(evt:TweetUpdaterEvent):void {
-				//it's all good
-				
 				//dispatch XMPP message so that all clients refresh automatically
-				
 				dispatchEvent(new TweetsRefreshEvent(resourceManager.getString('resources', 'DISPATCH_REFRESH_TWEETS'), true));
 				enableListeners(true);	
-				CursorManager.removeAllCursors();
 			}
 			
 			
@@ -255,34 +272,6 @@
 				this.x = oldX;
 				this.y = oldY;
 				enableListeners(true);
-			}
-			
-			/**
-			 *
-			 * Called when mouse rolls over this item
-			 * 
-			 **/
-			protected function mouseOverHandler(event:MouseEvent):void {
-				cursorId = CursorManager.setCursor(DragIcon);
-			}
-			
-			/**
-			 *
-			 * Called when rolls out of this item
-			 * 
-			 **/
-			protected function mouseOutHandler(event:MouseEvent):void {
-				CursorManager.removeCursor(cursorId);
-			}
-			
-			/**
-			 *
-			 * Called when double-click on this item occurs
-			 * 
-			 **/
-			protected function selectMIHandler(event:ContextMenuEvent):void {
-				data.isVisible = !data.isVisible;
-				updateTweet();
 			}
 		]]>
 	</fx:Script>
