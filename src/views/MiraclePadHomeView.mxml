@@ -96,6 +96,7 @@
 					case 401:
 						//login not OK, wrong password
 						trace("The password is not valid.");
+						
 						groupPass.text = "";
 						break;
 				}

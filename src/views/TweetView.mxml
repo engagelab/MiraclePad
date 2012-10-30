@@ -266,7 +266,7 @@
 	</s:titleContent>
 	
 	<s:actionContent>
-		<s:Button label="Logout" />
+		<s:Button label="Logout" click="dispatchEvent(new Event(resourceManager.getString('resources', 'LOGOUT'), true))" />
 	</s:actionContent>
 	
 	<s:HGroup width="100%" height="100%" includeIn="feed">
