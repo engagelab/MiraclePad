@@ -7,8 +7,6 @@
 		<![CDATA[
 			import listeners.RetweetEvent;
 			
-			import mx.events.FlexEvent;
-			
 			import spark.events.PopUpEvent;
 			
 			[Bindable] private var groupColor:uint = 0xCCCCCC;
@@ -57,11 +55,10 @@
 			 * 
 			 **/
 			protected function handleItemClick(event:MouseEvent):void {
-				if(new String(data.from).toLowerCase() != new String(data.currentGroup.title).toLowerCase()) {
-					var tooShortPassCallout:ReTweetCallout = new ReTweetCallout();
-					tooShortPassCallout.addEventListener(PopUpEvent.CLOSE, handleCalloutClose);
-					tooShortPassCallout.open(this, true);
-				}
+				//pop the retweet popup
+				var reTweetCallout:ReTweetCallout = new ReTweetCallout();
+				reTweetCallout.addEventListener(PopUpEvent.CLOSE, handleCalloutClose);
+				reTweetCallout.open(this, true);
 			}
 			
 			/**
@@ -70,6 +67,7 @@
 			 * 
 			 **/
 			protected function handleCalloutClose(evt:PopUpEvent):void {
+				//only if retweet was clicked
 				if(evt.data as Boolean) {
 					var rte:RetweetEvent = new RetweetEvent(resourceManager.getString('resources', 'RE_TWEET'), true);
 					rte.originGroup = data.from;

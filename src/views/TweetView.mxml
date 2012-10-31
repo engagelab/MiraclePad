@@ -40,7 +40,13 @@
 				_conn.plugin['muc'].joinRoom('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), new String(_currentGroup.title).toLowerCase()+"-"+UIDUtil.createUID());
 			}
 			
+			/**
+			 * 
+			 * Event handling function for DISPATCH_REFRESH_TWEETS
+			 * 
+			 **/
 			protected function dispatchRefreshTweetHandler(evt:Event):void {
+				//using the message room to let all clients know
 				_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"userName":"'+new String(_currentGroup.title).toLowerCase()+'", "messageType":"'+resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')+'"}', null);
 			}
 			
