@@ -8,6 +8,8 @@
 			import com.seesmic.as3.xmpp.XMPP;
 			import com.seesmic.as3.xmpp.XMPPEvent;
 			
+			import listeners.RetweetEvent;
+			
 			import mx.events.FlexEvent;
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
@@ -28,6 +30,7 @@
 			 **/
 			protected function initView(event:FlexEvent):void {
 				this.addEventListener(resourceManager.getString('resources', 'DISPATCH_REFRESH_TWEETS'), dispatchRefreshTweetHandler);
+				this.addEventListener(resourceManager.getString('resources', 'RE_TWEET'), handleReTweet);
 				
 				_currentGroup = navigator.context;
 				tweetOwner = new String(_currentGroup.title).toLowerCase();
@@ -113,6 +116,7 @@
 			public function refreshFeed():void {
 				var tweetsToDisplay:ArrayCollection = new ArrayCollection();
 				for each (var tweet:Object in tweetFeedArray) {
+					tweet.currentGroup = _currentGroup;
 					if(hashTags.length > 0) {
 						for each (var tag:String in hashTags) {
 							if((tweet.tags as Array).indexOf(tag) > -1 && !tweetsToDisplay.contains(tweet)) {
@@ -237,9 +241,24 @@
 				}			
 			}
 			
+			/**
+			 *
+			 * Function to call service to load tweets 
+			 * 
+			 **/
 			protected function loadTweets():void {
 				getTweets.url = resourceManager.getString('resources', 'TWEET_SERVER_URL') + "/tweet/" + new String(_currentGroup.title).toLowerCase();
 				getTweets.send();
+			}
+			
+			/**
+			 *
+			 * Event handling method for RE_TWEET 
+			 * 
+			 **/
+			protected function handleReTweet(evt:RetweetEvent):void {
+				this.tweetOwner = evt.originGroup;
+				wordInput.text = evt.tweetContent;
 			}
 			
 		]]>
