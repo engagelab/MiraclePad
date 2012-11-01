@@ -91,6 +91,7 @@
 						//login OK, password accepted
 						var lae:LoginAcceptedEvent = new LoginAcceptedEvent(resourceManager.getString('resources', 'LOGIN_ACCEPTED'), true);
 						lae.selectedGroup = groupCombo.selectedItem as Object;
+						lae.selectedGroup.title = cleanGroupName(lae.selectedGroup.title);
 						dispatchEvent(lae);
 						break;
 					case 401:
@@ -101,6 +102,10 @@
 						groupPass.text = "";
 						break;
 				}
+			}
+			
+			protected function cleanGroupName(name:String):String {
+				return name.replace("Å","A").replace("Ø", "O").replace("Æ", "AE");
 			}
 			
 			/**
