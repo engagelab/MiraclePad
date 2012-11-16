@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
 		xmlns:s="library://ns.adobe.com/flex/spark" title="MiraclePad Login" creationComplete="{getAllGroups.send()}" xmlns:mx="library://ns.adobe.com/flex/mx">
+	
 	<fx:Script>
 		<![CDATA[
 			import com.adobe.serialization.json.JSON;
@@ -8,10 +9,14 @@
 			import listeners.LoginAcceptedEvent;
 			
 			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
+			import mx.utils.UIDUtil;
 			
 			[Bindable] private var _groupList:ArrayCollection;
+			
+			private var colorDico:Dictionary;
 			
 			/**
 			 *
@@ -24,8 +29,10 @@
 				
 				//instantiate and build group array
 				_groupList = new ArrayCollection();
+				colorDico = new Dictionary();
 				for each (var act:Object in res) {
 					_groupList.addItem({title: act.name, id: act.id, colour: act.colour});
+					colorDico[new String(act.name).toLowerCase()] = act.colour;
 				}
 			}
 			
@@ -60,6 +67,7 @@
 			 * 
 			 **/
 			protected function submitForm():void {
+				bi.visible = true;
 				var params:Object = new Object();
 				params.groupId = (groupCombo.selectedItem as Object).id;
 				params.password = groupPass.text;
@@ -89,10 +97,8 @@
 						break;
 					case 200:
 						//login OK, password accepted
-						var lae:LoginAcceptedEvent = new LoginAcceptedEvent(resourceManager.getString('resources', 'LOGIN_ACCEPTED'), true);
-						lae.selectedGroup = groupCombo.selectedItem as Object;
-						lae.selectedGroup.title = cleanGroupName(lae.selectedGroup.title);
-						dispatchEvent(lae);
+						this.currentState = "energies";
+						refreshEnergies();
 						break;
 					case 401:
 						//login not OK, wrong password
@@ -100,6 +106,7 @@
 						var wrongPassCallout:WrongPassCallout = new WrongPassCallout();
 						wrongPassCallout.open(groupPass, true);
 						groupPass.text = "";
+						bi.visible = false;
 						break;
 				}
 			}
@@ -114,16 +121,92 @@
 			 * 
 			 **/
 			private function ioErrorHandler(ev:IOErrorEvent):void {
+				bi.visible = false;
 				trace(ev.errorID);
 			}
 			
+			protected function getEnergies_faultHandler(event:FaultEvent):void {
+				trace("An error occurred ");
+			}
+			
+			protected function getEnergies_resultHandler(event:ResultEvent):void {
+				bi.visible = false;
+				
+				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
+				var b:Button;
+				hashTags = new Array();
+				for each (var nrj:Object in res) {
+					b = new Button();
+					b.name = nrj.id;
+					b.label = nrj.energy;
+					hashTags.push("#"+nrj.energy);
+					b.width = 200;
+					b.height = 50;
+					b.addEventListener(MouseEvent.CLICK, pickEnergy);
+					energies.addElement(b);
+					
+					if(nrj.inuse) {
+						b.enabled = false;
+					}
+					else {
+						b.enabled = true;
+					}
+				}
+			}
+			
+			protected function pickEnergy(evt:MouseEvent):void {
+				bi.visible = true;
+				
+				var upurlRequest:URLRequest = new URLRequest(resourceManager.getString('resources', 'TWEET_SERVER_URL')+"/energySources");
+				upurlRequest.method = URLRequestMethod.PUT;
+				upurlRequest.contentType = "application/json";
+				
+				var statusObject:Object = new Object();
+				statusObject.stat = "pick";
+				token = UIDUtil.createUID();
+				statusObject.token = token;
+				statusObject.id = new String(evt.currentTarget.name);
+				
+				upurlRequest.data = com.adobe.serialization.json.JSON.encode(statusObject);
+				var uploader:URLLoader = new URLLoader();
+				uploader.addEventListener(Event.COMPLETE, upcompleteHandler);
+				uploader.load(upurlRequest);
+			}
+			
+			private function upcompleteHandler(ev:Event):void {
+				bi.visible = false;
+				var res:Object = com.adobe.serialization.json.JSON.decode(String(ev.target.data));
+				
+				if(res.inuse && this.token == res.token) {
+					var lae:LoginAcceptedEvent = new LoginAcceptedEvent(resourceManager.getString('resources', 'LOGIN_ACCEPTED'), true);
+					lae.selectedGroup = groupCombo.selectedItem as Object;
+					lae.selectedGroup.title = cleanGroupName(lae.selectedGroup.title);
+					lae.energyId = res.id;
+					lae.energyTitle = res.energy;
+					lae.hashTags = hashTags;
+					lae.colorDico = colorDico;
+					dispatchEvent(lae);
+				}
+				else {
+					refreshEnergies();
+				}
+			}
+			
+			private function refreshEnergies():void {
+				energies.removeAllElements();
+				getEnergies.send();
+			}
 		]]>
 	</fx:Script>
+	
 	<fx:Declarations>
 		<s:HTTPService url="{resourceManager.getString('resources', 'SERVER_URL')+'/groupInfo'}" 
 					   method="GET" result="getAllGroups_resultHandler(event)" fault="getAllGroups_faultHandler(event)" 
 					   resultFormat="text" id="getAllGroups" />
 		
+		<s:HTTPService url="{resourceManager.getString('resources', 'TWEET_SERVER_URL') + '/energySources'}" 
+					   method="GET" headers="{'pragma', 'no-cache'}" result="getEnergies_resultHandler(event)" fault="getEnergies_faultHandler(event)" resultFormat="text" id="getEnergies" showBusyCursor="true" />
+
 		<fx:Component className="WrongPassCallout">
 			<s:Callout horizontalPosition="after" verticalPosition="middle">
 				<s:VGroup paddingTop="10" paddingLeft="10" paddingRight="10" paddingBottom="10" horizontalAlign="center">
@@ -141,9 +224,17 @@
 				</s:VGroup>
 			</s:Callout>    
 		</fx:Component>
+		
+		<fx:String id="token" />
+		<fx:Array id="hashTags" />
 	</fx:Declarations>
 	
-	<s:VGroup horizontalAlign="center" horizontalCenter="0" verticalCenter="0">
+	<s:states>
+		<s:State name="default" />
+		<s:State name="energies" />
+	</s:states>
+	
+	<s:VGroup horizontalAlign="center" horizontalCenter="0" verticalCenter="0" includeIn="default">
 		<s:HGroup verticalAlign="middle" width="100%" gap="15">
 			<s:Label text="Group:" width="90" textAlign="right"/>
 			<s:SpinnerListContainer>
@@ -152,9 +243,15 @@
 		</s:HGroup>
 		<s:HGroup verticalAlign="middle" width="100%" gap="15">
 			<s:Label text="Password:" width="90" textAlign="right"/>
-			<s:TextInput id="groupPass" text="lilla" displayAsPassword="true" width="100%"/>
+			<s:TextInput id="groupPass" text="password" displayAsPassword="true" width="100%"/>
 		</s:HGroup>
 		<s:Spacer height="20" />
 		<s:Button label="LOG IN" click="validateBeforeLoggingIn()" />
 	</s:VGroup>
+	
+	<s:TileGroup width="640" id="energies" includeIn="energies" horizontalCenter="0" verticalCenter="0" horizontalGap="20" verticalGap="20" />
+	
+	<s:BorderContainer visible="false" width="100%" height="100%" backgroundColor="#333333" backgroundAlpha=".7" id="bi">
+		<s:BusyIndicator width="50" height="50" horizontalCenter="0" verticalCenter="0" symbolColor="#FFFFFF" />
+	</s:BorderContainer>
 </s:View>

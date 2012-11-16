@@ -20,6 +20,8 @@
 			
 			private var _conn:XMPP;
 			private var _currentGroup:Object;
+			private var _hashEnergies:Array;
+			private var _chosenEnergyString:String;
 			
 			[Bindable] public var tweetOwner:String;
 			
@@ -32,12 +34,16 @@
 				this.addEventListener(resourceManager.getString('resources', 'DISPATCH_REFRESH_TWEETS'), dispatchRefreshTweetHandler);
 				this.addEventListener(resourceManager.getString('resources', 'RE_TWEET'), handleReTweet);
 				
-				_currentGroup = navigator.context;
+				_currentGroup = navigator.context.currentGroup;
+				_hashEnergies = navigator.context.hashTags;
+				_chosenEnergyString = navigator.context.chosenEnergyString;
 				tweetOwner = new String(_currentGroup.title).toLowerCase();
 				_conn = XMPP(data);
 				_conn.addEventListener(XMPPEvent.MESSAGE_MUC, handleMUCMessage);
 				_conn.plugin['muc'].joinRoom('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_ROOM_NAME'), new String(_currentGroup.title).toLowerCase()+"-"+UIDUtil.createUID());
 				_conn.plugin['muc'].joinRoom('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), new String(_currentGroup.title).toLowerCase()+"-"+UIDUtil.createUID());
+			
+				buildFilters();
 			}
 			
 			/**
@@ -60,17 +66,18 @@
 					return;
 				}
 				
+				var al:Number = 1;
+				
+				var xm:XML = evt.stanza.xml as XML;
+				for each (var i:XML in xm.elements()) {
+					if(i.name() == "urn:xmpp:delay::delay") {
+						al = .5;
+					}
+				}
+				
 				switch(new String(evt.stanza.from.user)) {
 					case resourceManager.getString('resources', 'TWEETS_ROOM_NAME'):
 						var roomjid:JID = JID(evt.stanza.from);
-						var al:Number = 1;
-						
-						var xm:XML = evt.stanza.xml as XML;
-						for each (var i:XML in xm.elements()) {
-							if(i.name() == "urn:xmpp:delay::delay") {
-								al = .5;
-							}
-						}
 						
 						tweetFeedArray.addItem({bdy: evt.stanza.body, from: cleanResource(roomjid.getResource()), al: al, visible: true, tags: getTagsForContent(evt.stanza.body)});
 						refreshFeed();
@@ -78,7 +85,8 @@
 					
 					case resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'):
 						var res:Object = com.adobe.serialization.json.JSON.decode(String(evt.stanza.body));
-						if(res.userName == new String(_currentGroup.title).toLowerCase() && res.messageType == resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')) {
+						//if(res.userName == new String(_currentGroup.title).toLowerCase() && res.messageType == resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')) {
+						if(res.tag == _chosenEnergyString && res.messageType == resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL') && al == 1) {
 							loadTweets();
 						}
 						
@@ -105,9 +113,9 @@
 			protected function getTagsForContent(message:String):Array {
 				var tags:Array = new Array();
 				
-				for each (var tag:String in MiraclePad.HASH_TAGS_ARRAY) {
+				for each (var tag:String in _hashEnergies) {
 					if(message.indexOf(tag) > -1) {
-						tags.push(tag);
+						tags.push(tag.substr(1));
 					}
 				}
 				
@@ -164,12 +172,12 @@
 			 * build dynamically the filters on creation complete
 			 * 
 			 **/
-			protected function buildFilters(event:FlexEvent):void {
+			protected function buildFilters():void {
 				var cb:CheckBox;
-				for each (var referenceHash:String in MiraclePad.HASH_TAGS_ARRAY) {
+				for each (var referenceHash:String in _hashEnergies) {
 					cb = new CheckBox();
 					filterGroup.addElement(cb);
-					cb.label = referenceHash;
+					cb.label = referenceHash.substr(1);
 					cb.setStyle("color", 0xFFFFFF);
 					cb.addEventListener(Event.CHANGE, handleHashTag);
 				}
@@ -199,7 +207,11 @@
 			 * 
 			 **/
 			protected function sendTweet():void {
-				_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_ROOM_NAME'), "RT_"+tweetOwner+":"+wordInput.text, "sciwork");
+				var params:Object = new Object();
+				params.ownerName = tweetOwner;
+				params.text = wordInput.text;				
+				
+				_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_ROOM_NAME'), com.adobe.serialization.json.JSON.encode(params), "sciwork");
 				wordInput.text = "";				
 				tweetOwner = new String(_currentGroup.title).toLowerCase();
 			}
@@ -253,7 +265,7 @@
 			 * 
 			 **/
 			protected function loadTweets():void {
-				getTweets.url = resourceManager.getString('resources', 'TWEET_SERVER_URL') + "/tweet/" + new String(_currentGroup.title).toLowerCase();
+				getTweets.url = resourceManager.getString('resources', 'TWEET_SERVER_URL') + "/tweet/" + _chosenEnergyString;
 				getTweets.send();
 			}
 			
@@ -298,7 +310,7 @@
 		<s:BorderContainer width="250" height="100%" backgroundColor="#333333" skinClass="skins.hashPanelHeaderSkin">
 			<s:VGroup width="100%" height="100%">
 				<s:Label width="100%" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" text="Filters:" color="#FFFFFF" textDecoration="underline" />
-				<s:VGroup id="filterGroup" width="100%" gap="15" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" creationComplete="buildFilters(event)"/>
+				<s:VGroup id="filterGroup" width="100%" gap="15" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5"/>
 			</s:VGroup>
 		</s:BorderContainer>
 		<s:VGroup width="100%" height="100%">

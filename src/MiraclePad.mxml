@@ -24,6 +24,7 @@
 	
 	<fx:Script>
 		<![CDATA[
+			import com.adobe.serialization.json.JSON;
 			import com.seesmic.as3.xmpp.StreamEvent;
 			import com.seesmic.as3.xmpp.XMPP;
 			import com.seesmic.as3.xmpp.XMPPEvent;
@@ -37,18 +38,14 @@
 			import views.MiraclePadHomeView;
 			import views.TweetView;
 			
-			public static const HASH_TAGS_ARRAY:Array = new Array("#wind", "#solar", "#nuclear", "#hydro-electric", "#geothermal", "#fossil");
-			
-			public static const SVART:uint = 0x000000;
-			public static const GRONN:uint = 0x89BD46;
-			public static const ORANGSJE:uint = 0xFF9736;
-			public static const BLA:uint = 0x4ACAF1;
-			public static const ROSA:uint = 0xFF3288;
-			public static const GUL:uint = 0x6E3F30;
-			public static const LILLA:uint = 0x811D78;
+			protected static var colorDico:Dictionary;
 			
 			private var _conn:XMPP = null;
 			private var _currentGroup:Object;
+			private var _chosenEnergyID:String = null;
+			private var _chosenEnergyString:String = null;
+			private var _hashTags:Array = null;
+			private var _shouldExit:Boolean = false;
 			
 			/**
 			 *
@@ -58,6 +55,40 @@
 			protected function initApp(event:FlexEvent):void {
 				this.addEventListener(resourceManager.getString('resources', 'LOGIN_ACCEPTED'), handleLoginAccepted);
 				this.addEventListener(resourceManager.getString('resources', 'LOGOUT'), handleLogout);
+				this.addEventListener(resourceManager.getString('resources', 'RESET_ENERGY'), handleResetEnergy);
+			}
+			
+			/**
+			 *
+			 * Event handling method to display tweets fullscreen 
+			 * 
+			 **/
+			protected function handleResetEnergy(evt:Event):void {
+				if(_chosenEnergyID != null) {
+					var upurlRequest:URLRequest = new URLRequest(resourceManager.getString('resources', 'TWEET_SERVER_URL')+"/energySources");
+					upurlRequest.method = URLRequestMethod.PUT;
+					upurlRequest.contentType = "application/json";
+					
+					var statusObject:Object = new Object();
+					statusObject.stat = "reset";
+					statusObject.id = _chosenEnergyID;
+					
+					upurlRequest.data = com.adobe.serialization.json.JSON.encode(statusObject);
+					var uploader:URLLoader = new URLLoader();
+					uploader.addEventListener(HTTPStatusEvent.HTTP_STATUS, handleEnergyResetComplete);
+					uploader.load(upurlRequest);
+				}
+			}
+			
+			/**
+			 *
+			 * Event handling method when the reset energy call is completed 
+			 * 
+			 **/
+			protected function handleEnergyResetComplete(evt:HTTPStatusEvent):void {
+				_chosenEnergyID = null;
+				_chosenEnergyString = null;
+				navigator.pushView(MiraclePadHomeView, null, null, null);
 			}
 			
 			/**
@@ -67,6 +98,10 @@
 			 **/
 			protected function handleLoginAccepted(evt:LoginAcceptedEvent):void {
 				//this needs to be assigned before we change the application's state
+				_chosenEnergyID = evt.energyId;
+				_chosenEnergyString = evt.energyTitle;
+				_hashTags = evt.hashTags;
+				colorDico = evt.colorDico;
 				_currentGroup = evt.selectedGroup;
 				prepareXMPPConnection(new String(_currentGroup.title).toLowerCase());
 			}
@@ -81,7 +116,7 @@
 				_currentGroup = null;
 				_conn.disconnect();
 				_conn = null;
-				navigator.pushView(MiraclePadHomeView, null, null, null);
+				dispatchEvent(new Event(resourceManager.getString('resources', 'RESET_ENERGY'), true));
 			}
 			
 			/**
@@ -118,7 +153,11 @@
 			 **/
 			protected final function handleSession(e:XMPPEvent):void {
 				_conn.sendPresence();
-				navigator.pushView(TweetView, _conn, _currentGroup, null);
+				var ctx:Object = new Object();
+				ctx.currentGroup = _currentGroup;
+				ctx.hashTags = _hashTags;
+				ctx.chosenEnergyString = _chosenEnergyString;
+				navigator.pushView(TweetView, _conn, ctx, null);
 			}
 			
 			/**
@@ -127,35 +166,7 @@
 			 * 
 			 **/
 			public static function getColorBasedOnGroup(groupName:String):uint {
-				switch(groupName) {
-					case "gronn":
-						return GRONN;
-						break;
-										
-					case "orangsje": 
-						return ORANGSJE;
-						break;
-										
-					case "bla": 
-						return BLA;
-						break;
-											
-					case "rosa": 
-						return ROSA;
-						break;
-											
-					case "gul": 
-						return GUL;
-						break;
-											
-					case "lilla": 
-						return LILLA;
-						break;
-											
-					default: 
-						return 0;
-						break;
-				}
+				return colorDico[groupName];
 			}
 		]]>
 	</fx:Script>
