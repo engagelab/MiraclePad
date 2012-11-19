@@ -3,7 +3,7 @@
 	<id>no.uio.intermedia.miraclepad.debug</id>
 	<filename>MiraclePad</filename>
 	<name>MiraclePad-debug</name>
-	<versionNumber>1.0.0</versionNumber>
+	<versionNumber>1.0.1</versionNumber>
 	
 	<initialWindow>
 		<content>MiraclePad.swf</content>

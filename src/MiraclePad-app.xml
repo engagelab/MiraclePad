@@ -3,7 +3,7 @@
 	<id>no.uio.intermedia.miraclepad</id>
 	<filename>MiraclePad</filename>
 	<name>MiraclePad</name>
-	<versionNumber>1.0.0</versionNumber>
+	<versionNumber>1.0.1</versionNumber>
 	
 	<initialWindow>
 		<content>[This value will be overwritten by Flash Builder in the output app.xml]</content>
