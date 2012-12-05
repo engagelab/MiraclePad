@@ -25,6 +25,8 @@
 			
 			[Bindable] public var tweetOwner:String;
 			
+			private var timeoutInterval:Number;
+			
 			/**
 			 * 
 			 * init function for this view container
@@ -53,7 +55,8 @@
 			 **/
 			protected function dispatchRefreshTweetHandler(evt:Event):void {
 				//using the message room to let all clients know
-				_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"userName":"'+new String(_currentGroup.title).toLowerCase()+'", "messageType":"'+resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')+'"}', null);
+				//_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"userName":"'+new String(_currentGroup.title).toLowerCase()+'", "messageType":"'+resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')+'"}', null);
+				_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"tag":"'+_chosenEnergyString+'", "messageType":"'+resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')+'"}', null);
 			}
 			
 			/**
@@ -88,6 +91,15 @@
 						//if(res.userName == new String(_currentGroup.title).toLowerCase() && res.messageType == resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')) {
 						if(res.tag == _chosenEnergyString && res.messageType == resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL') && al == 1) {
 							loadTweets();
+						}
+						
+						if(res.tag == _chosenEnergyString && res.messageType == resourceManager.getString('resources', 'IPAD_SESSION_ACCEPTED') && al == 1) {
+							clearInterval(timeoutInterval);
+							bi.visible = false;
+						}
+						
+						if(res.tag == _chosenEnergyString && res.messageType == resourceManager.getString('resources', 'IPAD_SESSION_DISCONNECT') && al == 1) {
+							resetApp();
 						}
 						
 						break;
@@ -279,6 +291,23 @@
 				wordInput.text = evt.tweetContent;
 			}
 			
+			protected function shareView(event:Event):void {
+				if(event.target.selected) {
+					bi.visible = true;
+					_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"tag":"'+_chosenEnergyString+'", "messageType":"'+resourceManager.getString('resources', 'IPAD_SESSION_REQUEST')+'"}', null);
+					timeoutInterval = setInterval(resetApp, 5000);
+				}
+				else {
+					_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"tag":"'+_chosenEnergyString+'", "messageType":"'+resourceManager.getString('resources', 'IPAD_SESSION_DISCONNECT')+'"}', null);
+				}
+			}
+			
+			protected function resetApp():void {
+				shareButton.selected = false;
+				bi.visible = false;
+				clearInterval(timeoutInterval);
+			}
+			
 		]]>
 	</fx:Script>
 	
@@ -296,6 +325,8 @@
 	<s:navigationContent>
 		<s:Button includeIn="feed" label="Portfolio" click="this.currentState='portfolio'" />
 		<s:Button includeIn="portfolio" label="LiveFeed" click="this.currentState='feed'"/>
+		<s:Spacer width="15" includeIn="portfolio" />
+		<s:ToggleSwitch id="shareButton" includeIn="portfolio" label="Share" change="shareView(event)" />
 	</s:navigationContent>
 	
 	<s:titleContent>
@@ -327,4 +358,8 @@
 	</s:HGroup>
 	
 	<s:Group width="100%" height="100%" includeIn="portfolio" id="tweetsContainer" />
+	
+	<s:BorderContainer visible="false" width="100%" height="100%" backgroundColor="#333333" backgroundAlpha=".7" id="bi">
+		<s:BusyIndicator width="50" height="50" horizontalCenter="0" verticalCenter="0" symbolColor="#FFFFFF" />
+	</s:BorderContainer>
 </s:View>

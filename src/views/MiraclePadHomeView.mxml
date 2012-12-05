@@ -32,8 +32,17 @@
 				colorDico = new Dictionary();
 				for each (var act:Object in res) {
 					_groupList.addItem({title: act.name, id: act.id, colour: act.colour});
-					colorDico[new String(act.name).toLowerCase()] = act.colour;
+					colorDico[cleanGroupName(new String(act.name).toUpperCase()).toLowerCase()] = act.colour;
 				}
+			}
+			
+			/**
+			 *
+			 * Method to return to 'clean' groupname (replace norwegian charac) 
+			 * 
+			 **/
+			protected function cleanGroupName(name:String):String {
+				return name.replace("Å","A").replace("Ø", "O").replace("Æ", "AE");
 			}
 			
 			/**
@@ -109,10 +118,6 @@
 						bi.visible = false;
 						break;
 				}
-			}
-			
-			protected function cleanGroupName(name:String):String {
-				return name.replace("Å","A").replace("Ø", "O").replace("Æ", "AE");
 			}
 			
 			/**

@@ -72,6 +72,7 @@
 					var statusObject:Object = new Object();
 					statusObject.stat = "reset";
 					statusObject.id = _chosenEnergyID;
+					statusObject.token = "";
 					
 					upurlRequest.data = com.adobe.serialization.json.JSON.encode(statusObject);
 					var uploader:URLLoader = new URLLoader();
@@ -112,6 +113,9 @@
 			 * 
 			 **/
 			protected function handleLogout(evt:Event):void {
+				//let's warn the message room that this is going off
+				_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"tag":"'+_chosenEnergyString+'", "messageType":"'+resourceManager.getString('resources', 'IPAD_SESSION_DISCONNECT')+'"}', null);
+								
 				//this needs to be assigned before we change the application's state
 				_currentGroup = null;
 				_conn.disconnect();
