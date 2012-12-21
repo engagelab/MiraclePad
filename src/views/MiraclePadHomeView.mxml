@@ -14,6 +14,9 @@
 			import mx.rpc.events.ResultEvent;
 			import mx.utils.UIDUtil;
 			
+			import spark.collections.Sort;
+			import spark.collections.SortField;
+			
 			[Bindable] private var _groupList:ArrayCollection;
 			
 			private var colorDico:Dictionary;
@@ -34,6 +37,17 @@
 					_groupList.addItem({title: act.name, id: act.id, colour: act.colour});
 					colorDico[cleanGroupName(new String(act.name).toUpperCase()).toLowerCase()] = act.colour;
 				}
+				
+				//ordering the list alphabetically
+				var sortfield:SortField = new SortField();
+				sortfield.name = "title";
+				sortfield.descending = false;
+				
+				var sort:Sort = new Sort();
+				sort.fields = [sortfield];
+				
+				_groupList.sort = sort;
+				_groupList.refresh();
 			}
 			
 			/**
@@ -139,6 +153,7 @@
 				
 				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
 				var b:Button;
+				var nrjs:ArrayCollection = new ArrayCollection();
 				hashTags = new Array();
 				for each (var nrj:Object in res) {
 					b = new Button();
@@ -148,7 +163,7 @@
 					b.width = 200;
 					b.height = 50;
 					b.addEventListener(MouseEvent.CLICK, pickEnergy);
-					energies.addElement(b);
+					nrjs.addItem(b);
 					
 					if(nrj.inuse) {
 						b.enabled = false;
@@ -156,6 +171,20 @@
 					else {
 						b.enabled = true;
 					}
+				}
+				
+				var sortfield:SortField = new SortField();
+				sortfield.name = "label";
+				sortfield.descending = false;
+				
+				var sort:Sort = new Sort();
+				sort.fields = [sortfield];
+				
+				nrjs.sort = sort;
+				nrjs.refresh();
+				
+				for each (var sortedNrj:Button in nrjs) {
+					energies.addElement(sortedNrj);
 				}
 			}
 			

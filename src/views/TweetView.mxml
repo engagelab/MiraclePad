@@ -351,6 +351,7 @@
 				</s:layout>
 			</s:List>
 			<s:HGroup width="100%" gap="10" verticalAlign="middle" paddingBottom="10" paddingLeft="5" paddingRight="10">
+				<s:Button label="#" width="50" chromeColor="{MiraclePad.getColorBasedOnGroup(new String(_currentGroup.title).toLowerCase())}" buttonMode="true" click="wordInput.text = wordInput.text+'#';wordInput.setFocus()" />
 				<s:TextInput id="wordInput" width="100%" height="{sender.height}" maxChars="140" />
 				<s:Button id="sender" enabled="{wordInput.text.length > 0}" width="100" label="LEVER" chromeColor="{MiraclePad.getColorBasedOnGroup(new String(_currentGroup.title).toLowerCase())}" buttonMode="true" click="sendTweet()" />
 			</s:HGroup>
