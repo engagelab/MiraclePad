@@ -12,6 +12,7 @@
 			import spark.events.PopUpEvent;
 			
 			[Bindable] private var groupColor:uint = 0xCCCCCC;
+			[Bindable] private var fromName:String;
 			
 			/**
 			 * 
@@ -22,6 +23,26 @@
 			protected function initRenderer():void {
 				var groupName:String = new String(data.from).toLowerCase();
 				groupColor = MiraclePad.getColorBasedOnGroup(groupName);
+				
+				fromName = getCorrectFromName();
+			}
+			
+			private function getCorrectFromName():String {
+				switch(data.from) {
+					case 'bla':
+						return 'blå';
+						break;
+
+					case 'gra':
+						return 'grå';
+						
+					case 'gronn':
+						return 'grønn';
+					
+					default:
+						return data.from;
+						break;
+				}
 			}
 			
 			/**
@@ -48,6 +69,7 @@
 				try {
 					var res:Object = com.adobe.serialization.json.JSON.decode(bdy);
 					txt = new String(res.text);
+					
 				}
 				catch(error:Error) {
 				}
@@ -104,7 +126,7 @@
 		</s:fill>
 	</s:Rect>
 	<s:VGroup top="15" right="15" bottom="15" left="10" gap="15">
-		<s:Label text="{data.from+':'}" width="100%" color="#FFFFFF" />
+		<s:Label text="{fromName}" width="100%" color="#FFFFFF" />
 		<s:Label id="bdy" text="{extractText(data.bdy)}" width="100%" height="100%" color="#FFFFFF" />
 	</s:VGroup>
 </s:ItemRenderer>

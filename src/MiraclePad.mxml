@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:ViewNavigatorApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
 							xmlns:s="library://ns.adobe.com/flex/spark" 
-							firstView="views.MiraclePadHomeView" resizeForSoftKeyboard="true"
-							applicationComplete="initApp(event)">
+							firstView="views.MiraclePadHomeView" resizeForSoftKeyboard="true" applicationComplete="initApp(event)">
 	
 	<fx:Metadata>
 		[ResourceBundle("resources")]
@@ -19,6 +18,11 @@
 			s|ActionBar.beveled s|Group#navigationGroup s|Button {
 				skinClass: ClassReference("spark.skins.mobile.BeveledActionButtonSkin");
 			}
+		}
+		
+		s|ActionBar {
+			chromeColor: #333333;
+			color: #FFFFFF;
 		}
 	</fx:Style>
 	
@@ -40,7 +44,7 @@
 			
 			protected static var colorDico:Dictionary;
 			
-			private var _conn:XMPP = null;
+			public var _conn:XMPP = null;
 			private var _currentGroup:Object;
 			private var _chosenEnergyID:String = null;
 			private var _chosenEnergyString:String = null;
@@ -114,6 +118,7 @@
 			 **/
 			protected function handleLogout(evt:Event):void {
 				//let's warn the message room that this is going off
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_LOGGING_OFF");
 				_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"tag":"'+_chosenEnergyString+'", "messageType":"'+resourceManager.getString('resources', 'IPAD_SESSION_DISCONNECT')+'"}', null);
 								
 				//this needs to be assigned before we change the application's state
@@ -157,11 +162,15 @@
 			 **/
 			protected final function handleSession(e:XMPPEvent):void {
 				_conn.sendPresence();
+				_conn.plugin['muc'].joinRoom('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), new String(_currentGroup.title).toLowerCase()+"-"+UIDUtil.createUID());
 				var ctx:Object = new Object();
 				ctx.currentGroup = _currentGroup;
 				ctx.hashTags = _hashTags;
 				ctx.chosenEnergyString = _chosenEnergyString;
 				navigator.pushView(TweetView, _conn, ctx, null);
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_LOGIN:{\"group\":"+_currentGroup.title+"}");
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_ENERGY_SELECTED:{\"energy\":"+_chosenEnergyString+"}");
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_ENTERING_TWEET_VIEW");
 			}
 			
 			/**

@@ -258,7 +258,19 @@
 			 **/
 			protected function handleUpdateSuccessful(evt:TweetUpdaterEvent):void {
 				//dispatch XMPP message so that all clients refresh automatically
-				dispatchEvent(new TweetsRefreshEvent(resourceManager.getString('resources', 'DISPATCH_REFRESH_TWEETS'), true));
+				
+				var tt:Object = new Object();
+				tt.tweetId = data.id;
+				tt.text = extractText(data.text);
+				tt.xpos = data.xpos;
+				tt.ypos = data.ypos;	
+				
+				var tre:TweetsRefreshEvent = new TweetsRefreshEvent(resourceManager.getString('resources', 'DISPATCH_REFRESH_TWEETS'), true);
+				tre.log = true;
+				tre.twt = tt;
+				
+				dispatchEvent(tre);
+				
 				enableListeners(true);	
 			}
 			

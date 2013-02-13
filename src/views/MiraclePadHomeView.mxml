@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
-		xmlns:s="library://ns.adobe.com/flex/spark" title="MiraclePad Login" creationComplete="{getAllGroups.send()}" xmlns:mx="library://ns.adobe.com/flex/mx">
+		xmlns:s="library://ns.adobe.com/flex/spark" title="LOGIN" creationComplete="{getAllGroups.send()}" xmlns:mx="library://ns.adobe.com/flex/mx">
 	
 	<fx:Script>
 		<![CDATA[
 			import com.adobe.serialization.json.JSON;
+			
+			import flash.utils.clearInterval;
+			import flash.utils.setInterval;
 			
 			import listeners.LoginAcceptedEvent;
 			
@@ -20,6 +23,8 @@
 			[Bindable] private var _groupList:ArrayCollection;
 			
 			private var colorDico:Dictionary;
+			
+			private var loginTimer:Number;
 			
 			/**
 			 *
@@ -74,9 +79,11 @@
 			 * 
 			 **/
 			protected function validateBeforeLoggingIn():void {
+				stage.focus = null;
 				//validate the combo
 				if(groupPass.text.length > 0) {
-					submitForm();					
+					bi.visible = true;
+					loginTimer = setInterval(submitForm, 3000);			
 				}
 				else {
 					var tooShortPassCallout:TooShortPassCallout = new TooShortPassCallout();
@@ -90,7 +97,8 @@
 			 * 
 			 **/
 			protected function submitForm():void {
-				bi.visible = true;
+				clearInterval(loginTimer);
+				
 				var params:Object = new Object();
 				params.groupId = (groupCombo.selectedItem as Object).id;
 				params.password = groupPass.text;
@@ -152,11 +160,13 @@
 				bi.visible = false;
 				
 				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
-				var b:Button;
+				var b:NRJButton;
 				var nrjs:ArrayCollection = new ArrayCollection();
 				hashTags = new Array();
+				
 				for each (var nrj:Object in res) {
-					b = new Button();
+					b = new NRJButton();
+					b.bData = nrj;
 					b.name = nrj.id;
 					b.label = nrj.energy;
 					hashTags.push("#"+nrj.energy);
@@ -186,6 +196,8 @@
 				for each (var sortedNrj:Button in nrjs) {
 					energies.addElement(sortedNrj);
 				}
+				
+				stage.focus=null;
 			}
 			
 			protected function pickEnergy(evt:MouseEvent):void {
@@ -208,7 +220,6 @@
 			}
 			
 			private function upcompleteHandler(ev:Event):void {
-				bi.visible = false;
 				var res:Object = com.adobe.serialization.json.JSON.decode(String(ev.target.data));
 				
 				if(res.inuse && this.token == res.token) {
@@ -265,27 +276,29 @@
 	
 	<s:states>
 		<s:State name="default" />
-		<s:State name="energies" />
+		<s:State name="energies" enterState="stage.focus=null" />
 	</s:states>
 	
-	<s:VGroup horizontalAlign="center" horizontalCenter="0" verticalCenter="0" includeIn="default">
-		<s:HGroup verticalAlign="middle" width="100%" gap="15">
-			<s:Label text="Group:" width="90" textAlign="right"/>
-			<s:SpinnerListContainer>
-				<s:SpinnerList id="groupCombo" dataProvider="{_groupList}" width="300" itemRenderer="itemRenderers.SpinnerLoginRenderer" />
-			</s:SpinnerListContainer>
-		</s:HGroup>
-		<s:HGroup verticalAlign="middle" width="100%" gap="15">
-			<s:Label text="Password:" width="90" textAlign="right"/>
-			<s:TextInput id="groupPass" text="password" displayAsPassword="true" width="100%"/>
-		</s:HGroup>
-		<s:Spacer height="20" />
-		<s:Button label="LOG IN" click="validateBeforeLoggingIn()" />
-	</s:VGroup>
-	
-	<s:TileGroup width="640" id="energies" includeIn="energies" horizontalCenter="0" verticalCenter="0" horizontalGap="20" verticalGap="20" />
-	
-	<s:BorderContainer visible="false" width="100%" height="100%" backgroundColor="#333333" backgroundAlpha=".7" id="bi">
-		<s:BusyIndicator width="50" height="50" horizontalCenter="0" verticalCenter="0" symbolColor="#FFFFFF" />
-	</s:BorderContainer>
+	<s:Group width="100%" height="100%">
+		<s:VGroup horizontalAlign="right" horizontalCenter="0" verticalCenter="0" includeIn="default">
+			<s:HGroup verticalAlign="middle" width="100%" gap="15">
+				<s:Label text="Group:" width="90" textAlign="right"/>
+				<s:SpinnerListContainer>
+					<s:SpinnerList id="groupCombo" dataProvider="{_groupList}" width="300" itemRenderer="itemRenderers.SpinnerLoginRenderer" />
+				</s:SpinnerListContainer>
+			</s:HGroup>
+			<s:HGroup verticalAlign="middle" width="100%" gap="15">
+				<s:Label text="Password:" width="90" textAlign="right"/>
+				<s:TextInput id="groupPass" displayAsPassword="true" width="100%" enter="validateBeforeLoggingIn()" returnKeyLabel="done"/>
+			</s:HGroup>
+			<s:Spacer height="20" />
+			<s:Button label="LOGIN" click="validateBeforeLoggingIn()" chromeColor="#4668B0" color="#FFFFFF" />
+		</s:VGroup>
+		
+		<s:TileGroup id="energies" width="200" horizontalGap="20" verticalGap="10" horizontalCenter="0" verticalCenter="0"/>
+		
+		<s:BorderContainer visible="false" width="100%" height="100%" backgroundColor="#333333" backgroundAlpha=".7" id="bi">
+			<s:BusyIndicator width="50" height="50" horizontalCenter="0" verticalCenter="0" symbolColor="#FFFFFF" />
+		</s:BorderContainer>
+	</s:Group>
 </s:View>

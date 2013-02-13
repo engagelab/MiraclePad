@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
-		xmlns:s="library://ns.adobe.com/flex/spark" title.feed="LiveFeed" title.portfolio="Portfolio" creationComplete="initView(event)" destructionPolicy="auto">
+		xmlns:s="library://ns.adobe.com/flex/spark" title.feed="TWEETS" title.portfolio="PRESENTASJON" creationComplete="initView(event)" destructionPolicy="auto">
 	<fx:Script>
 		<![CDATA[
 			import com.adobe.serialization.json.JSON;
@@ -9,6 +9,7 @@
 			import com.seesmic.as3.xmpp.XMPPEvent;
 			
 			import listeners.RetweetEvent;
+			import listeners.TweetsRefreshEvent;
 			
 			import mx.events.FlexEvent;
 			import mx.rpc.events.FaultEvent;
@@ -18,7 +19,7 @@
 			import spark.components.CheckBox;
 			import spark.core.NavigationUnit;
 			
-			private var _conn:XMPP;
+			public var _conn:XMPP;
 			private var _currentGroup:Object;
 			private var _hashEnergies:Array;
 			private var _chosenEnergyString:String;
@@ -53,7 +54,12 @@
 			 * Event handling function for DISPATCH_REFRESH_TWEETS
 			 * 
 			 **/
-			protected function dispatchRefreshTweetHandler(evt:Event):void {
+			protected function dispatchRefreshTweetHandler(evt:TweetsRefreshEvent):void {
+				if(evt.log) {
+					XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_DRAG_TWEET:"+com.adobe.serialization.json.JSON.encode(evt.twt));
+				}
+				
+				
 				//using the message room to let all clients know
 				//_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"userName":"'+new String(_currentGroup.title).toLowerCase()+'", "messageType":"'+resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')+'"}', null);
 				_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"tag":"'+_chosenEnergyString+'", "messageType":"'+resourceManager.getString('resources', 'TWEET_POST_SUCCESSFUL')+'"}', null);
@@ -83,6 +89,11 @@
 						var roomjid:JID = JID(evt.stanza.from);
 						
 						tweetFeedArray.addItem({bdy: evt.stanza.body, from: cleanResource(roomjid.getResource()), al: al, visible: true, tags: getTagsForContent(evt.stanza.body)});
+						
+						if(al == 1) {
+							//XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "NEW_TWEET: "+evt.stanza.body);
+						}
+						
 						refreshFeed();
 						break;
 					
@@ -205,9 +216,11 @@
 				
 				if(event.currentTarget.selected) {
 					hashTags.addItem(tag);
+					XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_FILTER_ON:"+tag);
 				}
 				else {
 					hashTags.removeItemAt(hashTags.getItemIndex(tag));
+					XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_FILTER_OFF:"+tag);
 				}
 				
 				refreshFeed();
@@ -226,6 +239,8 @@
 				_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_ROOM_NAME'), com.adobe.serialization.json.JSON.encode(params), "sciwork");
 				wordInput.text = "";				
 				tweetOwner = new String(_currentGroup.title).toLowerCase();
+				
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "NEW_TWEET:"+com.adobe.serialization.json.JSON.encode(params));
 			}
 			
 			/**
@@ -296,6 +311,7 @@
 					bi.visible = true;
 					_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"tag":"'+_chosenEnergyString+'", "messageType":"'+resourceManager.getString('resources', 'IPAD_SESSION_REQUEST')+'"}', null);
 					timeoutInterval = setInterval(resetApp, 5000);
+					XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_SHARE_SCREEN_ON");
 				}
 				else {
 					_conn.plugin['muc'].sendMessage('conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'TWEETS_COMMUNICATION_ROOM_NAME'), '{"tag":"'+_chosenEnergyString+'", "messageType":"'+resourceManager.getString('resources', 'IPAD_SESSION_DISCONNECT')+'"}', null);
@@ -305,7 +321,40 @@
 			protected function resetApp():void {
 				shareButton.selected = false;
 				bi.visible = false;
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_SHARE_SCREEN_OFF");
 				clearInterval(timeoutInterval);
+			}
+			
+			protected function button1_clickHandler(event:MouseEvent):void {
+				var wrongPassCallout:testCO = new testCO();
+				wrongPassCallout.open(oppgaveButton1, true);
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_TWEET_DESCRIPTION_OPEN");
+			}
+			
+			protected function oppgaveButton1_creationCompleteHandler(event:FlexEvent):void {
+				var wrongPassCallout:testCO = new testCO();
+				wrongPassCallout.open(oppgaveButton1, true);
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_TWEET_DESCRIPTION_OPEN");
+			}
+			
+			protected function button2_clickHandler(event:MouseEvent):void {
+				var wrongPassCallout:testCO2 = new testCO2();
+				wrongPassCallout.open(oppgaveButton2, true);
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_PRESENTATION_DESCRIPTION_OPEN");
+			}
+			
+			protected function oppgaveButton2_creationCompleteHandler(event:FlexEvent):void {
+				var wrongPassCallout:testCO2 = new testCO2();
+				wrongPassCallout.open(oppgaveButton2, true);
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_PRESENTATION_DESCRIPTION_OPEN");
+			}
+			
+			protected function enterTwt():void {
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_ENTERING_TWEET_VIEW");
+			}
+			
+			protected function enterPres():void {
+				XMPPLogger.info(_conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_ENTERING_PRESENTATION_VIEW");
 			}
 			
 		]]>
@@ -315,6 +364,49 @@
 		<s:ArrayCollection id="tweetFeedArray" />
 		<s:ArrayCollection id="hashTags" />
 		<s:HTTPService method="GET" headers="{'pragma', 'no-cache'}" result="getTweets_resultHandler(event)" fault="getTweets_faultHandler(event)" resultFormat="text" id="getTweets" showBusyCursor="true" />
+	
+		<fx:Component className="testCO">
+			<s:Callout horizontalPosition="start" verticalPosition="after">
+				
+				<fx:Script>
+					<![CDATA[
+						protected function button3_clickHandler(event:MouseEvent):void {
+							XMPPLogger.info((this.parentDocument as MiraclePad)._conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_TWEET_DESCRIPTION_CLOSE");
+							close();
+						}
+					]]>
+				</fx:Script>
+				
+				<s:VGroup width="500" paddingTop="10" paddingLeft="10" paddingRight="10" paddingBottom="10" horizontalAlign="center">
+					<s:Label width="100%">
+						<s:text>Gå i utstillingen. Svar på så mange av disse spørsmålene dere klarer, og finn gjerne andre fakta om bærekraftig utvikling også: Hvilke fordeler og ulemper har energikilden? Er det lokale ulemper ved å utnytte energikilden? Er det andre interessekonflikter knyttet til denne kilden? Er den en ‘ren’ energikilde? Peker den seg ut som framtidens energiform? Hvordan inngår energikilden i forhold til lagring, transport og bruk?
+Skriv korte ‘tweets’, og husk å hash-tagge deres energikilde (#atomkraft, #bioenergi, #bølgekraft, #sol, #vann, #vind)</s:text>
+					</s:Label>
+					<s:Button label="OK" click="button3_clickHandler(event)"/>
+				</s:VGroup>
+			</s:Callout>    
+		</fx:Component>
+		
+		<fx:Component className="testCO2">
+			<s:Callout horizontalPosition="start" verticalPosition="after">
+				
+				<fx:Script>
+					<![CDATA[
+						protected function button4_clickHandler(event:MouseEvent):void {
+							XMPPLogger.info((this.parentDocument as MiraclePad)._conn, 'conference.'+resourceManager.getString('resources', 'XMPP_SERVER'), resourceManager.getString('resources', 'LOG_ROOM_NAME'), "IPAD_PRESENTATION_DESCRIPTION_CLOSE");
+							close();
+						}
+					]]>
+				</fx:Script>
+				
+				<s:VGroup width="500" paddingTop="10" paddingLeft="10" paddingRight="10" paddingBottom="10" horizontalAlign="center">
+					<s:Label width="100%">
+						<s:text>Bruk om lag 10 minutter på å organisere tweetsene som er sendt inn om deres energikilde. Bruk "PRESENTASJON" modus til dette. Diskuter kort hva dere vil legge frem i plenumssituasjonen.</s:text>
+					</s:Label>
+					<s:Button label="OK" click="button4_clickHandler(event)"/>
+				</s:VGroup>
+			</s:Callout>    
+		</fx:Component>
 	</fx:Declarations>
 	
 	<s:states>
@@ -323,10 +415,13 @@
 	</s:states>
 	
 	<s:navigationContent>
-		<s:Button includeIn="feed" label="Portfolio" click="this.currentState='portfolio'" />
-		<s:Button includeIn="portfolio" label="LiveFeed" click="this.currentState='feed'"/>
+		<s:Button includeIn="feed" label="PRESENTASJON" click="this.currentState='portfolio';enterPres()" />
+		<s:Button includeIn="portfolio" label="TWEETS" click="this.currentState='feed';enterTwt()"/>
 		<s:Spacer width="15" includeIn="portfolio" />
-		<s:ToggleSwitch id="shareButton" includeIn="portfolio" label="Share" change="shareView(event)" />
+		<s:HGroup id="shareGroup" includeIn="portfolio" verticalAlign="baseline" >
+			<s:Label color="#FFFFFF" text="DEL SKJERM:" fontSize="11"/>
+			<s:ToggleSwitch id="shareButton" change="shareView(event)" skinClass="itemRenderers.MiracleToggleSkin" />
+		</s:HGroup>
 	</s:navigationContent>
 	
 	<s:titleContent>
@@ -334,12 +429,16 @@
 	</s:titleContent>
 	
 	<s:actionContent>
-		<s:Button label="Logout" click="dispatchEvent(new Event(resourceManager.getString('resources', 'LOGOUT'), true))" />
+		<s:Spacer width="100" includeIn="portfolio" />
+		<s:Button label="OPPGAVE" id="oppgaveButton1" includeIn="feed" click="button1_clickHandler(event)" creationComplete="oppgaveButton1_creationCompleteHandler(event)" />
+		<s:Button label="OPPGAVE" id="oppgaveButton2" includeIn="portfolio" click="button2_clickHandler(event)" creationComplete="oppgaveButton2_creationCompleteHandler(event)" />
+		<s:Spacer width="10" />
+		<s:Button label="LOGG UT" click="dispatchEvent(new Event(resourceManager.getString('resources', 'LOGOUT'), true))" />
 	</s:actionContent>
 	
 	<s:HGroup width="100%" height="100%" includeIn="feed">
 		<s:BorderContainer width="250" height="100%" backgroundColor="#333333" skinClass="skins.hashPanelHeaderSkin">
-			<s:VGroup width="100%" height="100%">
+			<s:VGroup top="15" left="15" right="15" bottom="15">
 				<s:Label width="100%" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" text="Filters:" color="#FFFFFF" textDecoration="underline" />
 				<s:VGroup id="filterGroup" width="100%" gap="15" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5"/>
 			</s:VGroup>
@@ -353,7 +452,7 @@
 			<s:HGroup width="100%" gap="10" verticalAlign="middle" paddingBottom="10" paddingLeft="5" paddingRight="10">
 				<s:Button label="#" width="50" chromeColor="{MiraclePad.getColorBasedOnGroup(new String(_currentGroup.title).toLowerCase())}" buttonMode="true" click="wordInput.text = wordInput.text+'#';wordInput.setFocus()" />
 				<s:TextInput id="wordInput" width="100%" height="{sender.height}" maxChars="140" />
-				<s:Button id="sender" enabled="{wordInput.text.length > 0}" width="100" label="LEVER" chromeColor="{MiraclePad.getColorBasedOnGroup(new String(_currentGroup.title).toLowerCase())}" buttonMode="true" click="sendTweet()" />
+				<s:Button id="sender" enabled="{wordInput.text.length > 0}" width="100" label="LAGRE" chromeColor="{MiraclePad.getColorBasedOnGroup(new String(_currentGroup.title).toLowerCase())}" buttonMode="true" click="sendTweet()" />
 			</s:HGroup>
 		</s:VGroup>
 	</s:HGroup>
